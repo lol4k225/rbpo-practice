@@ -7,9 +7,9 @@ VALUES (2, 'student', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17l
 ALTER TABLE USERS ALTER COLUMN ID RESTART WITH 3;
 
 -- Students
-INSERT INTO STUDENTS (id, name, email, group_name)
-VALUES (1, 'Ivanov Ivan', 'ivanov@mtuci.ru', 'BKS2301'),
-       (2, 'Petrova Maria', 'petrova@mtuci.ru', 'BKS2302');
+INSERT INTO STUDENTS (id, name, email, userid)
+VALUES (1, 'Ivanov Ivan', 'ivanov@mtuci.ru', '1'),
+       (2, 'Petrova Maria', 'petrova@mtuci.ru', '2');
 ALTER TABLE STUDENTS ALTER COLUMN ID RESTART WITH 3;
 
 -- Courses

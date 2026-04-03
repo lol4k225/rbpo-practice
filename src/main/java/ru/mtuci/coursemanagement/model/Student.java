@@ -23,5 +23,5 @@ public class Student {
     private String email;
 
     @Column
-    private Long group_name;
+    private Long userId;
 }
