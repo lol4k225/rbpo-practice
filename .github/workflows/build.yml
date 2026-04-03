@@ -20,7 +20,12 @@ jobs:
 
       - name: Gitleaks Scan
         run: |
-          docker run --rm -v "${{ github.workspace }}:/code" zricethezav/gitleaks:latest detect --source="/code" --no-git -v
+          docker run --rm -v "${{ github.workspace }}:/code" \
+          zricethezav/gitleaks:latest detect \
+          --source="/code" \
+          --no-git \
+          --report-format=json \
+          --report-path=/code/gitleaks-report.json -v
   build:
     runs-on: ubuntu-latest
     container: eclipse-temurin:21-jdk
