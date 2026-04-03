@@ -110,7 +110,6 @@ jobs:
           rules_file_name: rules.tsv
           allow_issue_writing: false
         continue-on-error: true
-
   container-security:
     needs: [ build ]
     runs-on: ubuntu-latest
