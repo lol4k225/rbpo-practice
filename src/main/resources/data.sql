@@ -1,20 +1,19 @@
--- Очистка таблиц перед вставкой (защита от повторного запуска в тестах)
-DELETE FROM COURSES;
-DELETE FROM STUDENTS;
-DELETE FROM USERS;
+-- Demo data
+-- Users (password: password, bcrypt hash)
+INSERT INTO USERS (id, username, password, role)
+VALUES (1, 'teacher', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'TEACHER');
+INSERT INTO USERS (id, username, password, role)
+VALUES (2, 'student', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'STUDENT');
+ALTER TABLE USERS ALTER COLUMN ID RESTART WITH 3;
 
--- Users (без ID)
-INSERT INTO USERS (username, password, role)
-VALUES ('teacher', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'TEACHER'),
-       ('student', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'STUDENT');
+-- Students
+INSERT INTO STUDENTS (id, name, email, group_name)
+VALUES (1, 'Ivanov Ivan', 'ivanov@mtuci.ru', 'BKS2301'),
+       (2, 'Petrova Maria', 'petrova@mtuci.ru', 'BKS2302');
+ALTER TABLE STUDENTS ALTER COLUMN ID RESTART WITH 3;
 
--- Students (без ID)
-INSERT INTO STUDENTS (name, email, USER_ID)
-VALUES ('Ivanov Ivan', 'ivanov@mtuci.ru', '1'),
-       ('Petrova Maria', 'petrova@mtuci.ru', '2');
-
--- Courses (здесь teacher_id должен ссылаться на существующий ID из таблицы USERS)
--- Если у teacher в базе ID стал 1, то оставляем 1.
-INSERT INTO COURSES (title, description, teacher_id)
-VALUES ('RBPO', 'Basics of securing apps', 1),
-       ('Database Basics', 'Intro to SQL', 1);
+-- Courses
+INSERT INTO COURSES (id, title, description, teacher_id)
+VALUES (1, 'RBPO', 'Basics of securing apps', 1),
+       (2, 'Database Basics', 'Intro to SQL', 1);
+ALTER TABLE COURSES ALTER COLUMN ID RESTART WITH 3;
