@@ -9,10 +9,26 @@ on:
 permissions:
   contents: read
   security-events: write
+  packages: write
 
 jobs:
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gitleaks Scan
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/code" \
+          zricethezav/gitleaks:latest detect \
+          --source="/code" \
+          --no-git \
+          --report-format=json \
+          --report-path=/code/gitleaks-report.json -v
   build:
     runs-on: ubuntu-latest
+    needs: secrets-scan
     container: eclipse-temurin:21-jdk
     steps:
       - uses: actions/checkout@v4
@@ -87,11 +103,75 @@ jobs:
       - name: ZAP API Scan
         uses: zaproxy/action-api-scan@v0.10.0
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          docker_name: 'ghcr.io/zaproxy/zaproxy:stable'
           target: http://localhost:8080/v3/api-docs
           format: openapi
+          artifact_name: 'zap-report-${{ github.run_id }}-${{ github.run_attempt }}'
           rules_file_name: rules.tsv
           allow_issue_writing: false
         continue-on-error: true
+  container-security:
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set lower case repo name
+        run: |
+          REPO_LC=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+          echo "REPO_LC=${REPO_LC}" >> "${GITHUB_ENV}"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-jar
+          path: target/
+
+      - name: Build image
+        run: |
+          docker build -t "ghcr.io/${{ env.REPO_LC }}:latest" .
+
+      - name: Trivy Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "ghcr.io/${{ env.REPO_LC }}:latest"
+          exit-code: '1'
+          severity: "CRITICAL"
+          ignore-unfixed: true
+
+      - name: Login and Push
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker push "ghcr.io/${{ env.REPO_LC }}:latest"
+          
+  web-fuzzing:
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-jar
+          path: target
+
+      - name: Install ffuf
+        run: |
+          wget https://github.com/ffuf/ffuf/releases/download/v2.1.0/ffuf_2.1.0_linux_amd64.tar.gz
+          tar -xzf ffuf_2.1.0_linux_amd64.tar.gz
+          sudo mv ffuf /usr/local/bin/
+
+      - name: Fuzzing
+        run: |
+          java -jar target/*.jar &
+          sleep 45
+          printf "login\nregister\ncourses" > wordlist.txt
+          ffuf -u http://localhost:8081/api/FUZZ -w wordlist.txt -o fuzz.json
 
   security-check:
     runs-on: ubuntu-latest
@@ -103,7 +183,7 @@ jobs:
         run: |
           echo "=== Проверка исправлений безопасности ==="
           PASS=0; FAIL=0
-          check() { if grep -rq "$2" src/; then echo "✅ $1"; PASS=$((PASS+1)); else echo "❌ $1"; FAIL=$((FAIL+1)); fi; }
+          check() { if grep -rq "$2" src/; then echo "Success $1"; PASS=$((PASS+1)); else echo "Failed $1"; FAIL=$((FAIL+1)); fi; }
           check "SQL injection fix (parameterized query)" "jdbc.query(sql, rm, title)"
           check "XXE protection (disallow-doctype-decl)" "disallow-doctype-decl"
           check "SSRF protection (isLoopbackAddress)" "isLoopbackAddress"
